@@ -23,17 +23,18 @@ pptvbs::pptvbs(QWidget *parent)
 	: QDialog(parent)
 {
 	ui.setupUi(this);
-	PPTCache::Get()->init();
+
+	setWindowFlags(windowFlags() | Qt::WindowMinimizeButtonHint);
+
 }
 
 void pptvbs::on_btn_init_clicked()
 {
-	PPTCache::Get()->init(ui.comboBox->currentIndex());
 }
 
 void pptvbs::on_btn_start_clicked() {
 	QString fileName = QFileDialog::getOpenFileName(this,
-		tr("Open Image"), QDir::homePath(), tr("PPT Files (*.ppt *.pptx)"));
+		tr("Open Image"), QDir::homePath(), tr("PPT Files (*.ppt *.pptx *.dps)"));
 	player = new PPTPlayer(fileName);
 	player->procStart(ui.widget, ui.widget_3);
 }

@@ -2,7 +2,7 @@
 
 #include <qt_windows.h>
 
-PPTCache::PPTCache() : m_controller(nullptr)
+PPTCache::PPTCache()
 {
 
 }
@@ -22,33 +22,6 @@ PPTCache *PPTCache::Get()
 	return inst;
 }
 
-bool PPTCache::init(int type) {
-	m_runType = type;
-	// 0: "Powerpoint.Application"
-	// 1£º"Kwpp.Application"
-	QString appName = "Powerpoint.Application";
-	if (type == 1) {
-		appName = "Kwpp.Application";
-	}
-
-	if (m_controller != nullptr)
-	{
-		delete m_controller;
-	}
-
-	m_controller = new QAxObject();
-
-	m_controller->setControl(appName);
-
-
-	m_controller->setProperty("Visible", false);
-
-	return true;
-}
-
-QAxObject* PPTCache::getPPTApp() {
-	return m_controller;
-}
 
 BOOL CALLBACK __children(HWND hwnd, LPARAM lparam)
 {

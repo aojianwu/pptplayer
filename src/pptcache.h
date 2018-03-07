@@ -13,9 +13,6 @@ class PPTCache
 public:
 
 
-	bool init(int type = 0);
-
-	QAxObject* getPPTApp();
 
 	HWND getLastPPTWnd();
 
@@ -23,9 +20,6 @@ public:
 	static PPTCache* Get();
 
 private:
-	QAxObject* m_controller;	// Application
-	int  m_runType;
-
 	QList<HWND> m_allPPTWnds;
 
 private:

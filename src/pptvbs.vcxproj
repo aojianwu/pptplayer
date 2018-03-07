@@ -85,6 +85,7 @@
     <ClCompile Include="pptcache.cpp" />
     <ClCompile Include="pptplayer.cpp" />
     <ClCompile Include="pptvbs.cpp" />
+    <ClCompile Include="xsohelper.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="pptvbs.h">
@@ -114,6 +115,7 @@
     <ClInclude Include="GeneratedFiles\ui_pptvbs.h" />
     <ClInclude Include="pptcache.h" />
     <ClInclude Include="pptplayer.h" />
+    <ClInclude Include="xsohelper.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="pptvbs.qrc">

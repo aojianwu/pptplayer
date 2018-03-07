@@ -13,8 +13,7 @@ class PPTPlayer  {
 public:
 	PPTPlayer(QString filepath);
 
-
-	bool isPostfixRight(QString filename);
+	
 
 	bool procRun(QWidget* widget = nullptr, QWidget* fitWidget = nullptr);
 	bool procNext();
@@ -34,12 +33,18 @@ public:
 
 	virtual ~PPTPlayer();
 
+private:
+	bool init();
+
 protected:
 	QAxObject* presentation;	// Presentations
 	QAxObject* opened;			// Presentation 
 	QAxObject* sss;				// SlideShowSettings
 	QAxObject* window;			// SlideShowWindow
 	QString    m_filepath;
+
+	QAxObject* m_controller;	// Application
+	int  m_runType;
 };
 
 #endif

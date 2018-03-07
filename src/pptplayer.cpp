@@ -4,9 +4,14 @@
 
 #include "pptcache.h"
 
+#include "xsohelper.h"
+
 PPTPlayer::PPTPlayer(QString filepath)
 	: opened(NULL),
+	m_controller(NULL),
 	m_filepath(filepath) {
+
+	init();
 
 }
 
@@ -18,20 +23,28 @@ PPTPlayer::~PPTPlayer() {
 
 
 
+bool PPTPlayer::init() {
 
-bool PPTPlayer::isPostfixRight(QString filename) {
-	QString postfix = filename.split('.').last();
-	if (postfix == "ppt")
-		return true;
-	return false;
+
+	if (m_controller != nullptr)
+	{
+		delete m_controller;
+	}
+
+	m_controller = new QAxObject();
+
+	QString appName = XsoHelper::getDefaultAppFromFileName(m_filepath);
+
+	m_controller->setControl(appName);
+
+	m_controller->setProperty("Visible", false);
+
+	return true;
 }
 
 
-
-
-
 bool PPTPlayer::procRun(QWidget* widget, QWidget* fitWidget) {
-	presentation = PPTCache::Get()->getPPTApp()->querySubObject("Presentations");
+	presentation = m_controller->querySubObject("Presentations");
 
 	if (!presentation)
 	{
