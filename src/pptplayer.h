@@ -37,13 +37,15 @@ private:
 	bool init();
 
 protected:
-	QAxObject* presentation;	// Presentations
-	QAxObject* opened;			// Presentation 
-	QAxObject* sss;				// SlideShowSettings
-	QAxObject* window;			// SlideShowWindow
+	QAxObject* m_presentations;	// Presentations
+	QAxObject* m_opened;			// Presentation 
+	QAxObject* m_sss;				// SlideShowSettings
+	QAxObject* m_window;			// SlideShowWindow
 	QString    m_filepath;
 
-	QAxObject* m_controller;	// Application
+	QString    m_tmpPath;
+
+	QAxObject* m_application;	// Application
 	int  m_runType;
 };
 

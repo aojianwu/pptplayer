@@ -1,15 +1,27 @@
 ﻿#include <QDebug>
 #include <QDir>
+
+#include <QFile>
 #include "pptplayer.h"
 
 #include "pptcache.h"
 
 #include "xsohelper.h"
 
+enum MsoTriState
+{
+	msoCTrue =	1,
+	msoFalse =	0,
+	msoTrue = -1,
+	msoTriStateMixed =  - 2	,
+	msoTriStateToggle =  - 3,	
+};
+
 PPTPlayer::PPTPlayer(QString filepath)
-	: opened(NULL),
-	m_controller(NULL),
-	m_filepath(filepath) {
+	: m_opened(NULL),
+	m_application(NULL),
+	m_filepath(filepath),
+	m_tmpPath(filepath){
 
 	init();
 
@@ -17,8 +29,8 @@ PPTPlayer::PPTPlayer(QString filepath)
 
 
 PPTPlayer::~PPTPlayer() {
-	if (opened)
-		opened->querySubObject("Close()");
+	if (m_opened)
+		m_opened->querySubObject("Close()");
 }
 
 
@@ -26,68 +38,80 @@ PPTPlayer::~PPTPlayer() {
 bool PPTPlayer::init() {
 
 
-	if (m_controller != nullptr)
+	if (m_application != nullptr)
 	{
-		delete m_controller;
+		delete m_application;
 	}
 
-	m_controller = new QAxObject();
 
-	QString appName = XsoHelper::getDefaultAppFromFileName(m_filepath);
+	QFileInfo fi(m_filepath);
+	m_tmpPath.replace(fi.baseName(), fi.baseName() + "_tmp");
+	bool ret = QFile::copy(m_filepath, m_tmpPath);
 
-	m_controller->setControl(appName);
 
-	m_controller->setProperty("Visible", false);
+	QFileInfo fi2(m_tmpPath);
+	//fi2.permission(QFile::WriteUser | QFile::WriteOwner | QFile::WriteGroup | QFile::WriteOther);
+	SetFileAttributes((LPCWSTR)m_tmpPath.utf16(), FILE_ATTRIBUTE_NORMAL);
+
+
+	m_application = new QAxObject();
+
+	QString appName = XsoHelper::getDefaultAppFromFileName(m_tmpPath);
+
+	m_application->setControl(appName);
+
+	//m_application->setProperty("Visible", msoFalse);
 
 	return true;
 }
 
 
 bool PPTPlayer::procRun(QWidget* widget, QWidget* fitWidget) {
-	presentation = m_controller->querySubObject("Presentations");
+	m_presentations = m_application->querySubObject("Presentations");
 
-	if (!presentation)
+	if (!m_presentations)
 	{
 		return false;
 	}
 
-	opened = presentation->querySubObject("Open(QString, QVariant, QVariant, QVariant)", m_filepath, 1, 1, 0);
-	if (!opened) {
+	//m_opened = m_presentations->querySubObject("Open(QString, QVariant, QVariant, QVariant)", m_tmpPath, msoTrue, msoTrue, msoFalse);
+	m_opened = m_presentations->querySubObject("Open(QString)", m_tmpPath);
+	if (!m_opened) {
 		return false;
 	}
-	opened->setProperty("IsFullScreen", false);
+	m_opened->setProperty("IsFullScreen", msoFalse);
 
-	sss = opened->querySubObject("SlideShowSettings");
-	if (!sss) {
+	m_sss = m_opened->querySubObject("SlideShowSettings");
+	if (!m_sss) {
 		return false;
 	}
-	sss->setProperty("ShowWithAnimation", true);
-	sss->setProperty("LoopUntilStopped", true);
+	m_sss->setProperty("ShowWithAnimation", msoTrue);
+	m_sss->setProperty("LoopUntilStopped", msoTrue);
 	
 
-	sss->querySubObject("Run()");
-	window = opened->querySubObject("SlideShowWindow");
-	if (!window) {
+	m_sss->querySubObject("Run()");
+	m_window = m_opened->querySubObject("SlideShowWindow");
+	if (!m_window) {
 		return false;
 	}
 
 
-	auto view = window->querySubObject("View");
+	auto view = m_window->querySubObject("View");
 	if (!view) {
 		return false;
 	}
 
-	view->setProperty("ZoomToFit", true);
+	view->setProperty("ZoomToFit", msoTrue);
 
 	// 以磅为单位
-	int sw = window->property("Width").toInt();
-	int sh = window->property("Height").toInt();
+	float sw = m_window->property("Width").toInt();
+	float sh = m_window->property("Height").toInt();
 
-	int w = widget->width();
-	int h = widget->height();
+	float w = widget->width();
+	float h = widget->height();
 
-	int dw = 0;
-	int dh = 0;
+	float dw = 0;
+	float dh = 0;
 	if (sw/sh < w/h)
 	{
 		dh = h* 0.75;;
@@ -98,10 +122,10 @@ bool PPTPlayer::procRun(QWidget* widget, QWidget* fitWidget) {
 		dh = sh * dw / sw;
 	}
 
-	window->setProperty("Width", dw);
-	window->setProperty("Height", dh);
-	window->setProperty("Top", 0);
-	window->setProperty("Left", 0);
+	m_window->setProperty("Width", dw);
+	m_window->setProperty("Height", dh);
+	m_window->setProperty("Top", 0);
+	m_window->setProperty("Left", 0);
 
 	// WPS设置该项无效
 	//window->setProperty("Top", dtop);
@@ -110,11 +134,11 @@ bool PPTPlayer::procRun(QWidget* widget, QWidget* fitWidget) {
 	HWND pptWnd = PPTCache::Get()->getLastPPTWnd();
 	//::SetParent(pptWnd, (HWND)widget->winId());
 
-	int nw = window->property("Width").toInt() * 4 / 3;
-	int nh = window->property("Height").toInt() * 4 / 3;
+	float nw = m_window->property("Width").toFloat() * 4 / 3;
+	float nh = m_window->property("Height").toFloat() * 4 / 3;
 
-	int top = (h - nh ) / 2;
-	int left = (w - nw) / 2;
+	float top = (h - nh ) / 2;
+	float left = (w - nw) / 2;
 
 
 	fitWidget->move(left, top);
@@ -122,20 +146,22 @@ bool PPTPlayer::procRun(QWidget* widget, QWidget* fitWidget) {
 
 
 	::SetParent(pptWnd, (HWND)fitWidget->winId());
+
+	m_opened->dynamicCall("Save()");
 	return true;
 }
 
 
 bool PPTPlayer::procExport(int index, QString savePath)
 {
-	auto slides = window->querySubObject("Presentation");
+	auto slides = m_window->querySubObject("Presentation");
 	slides = slides->querySubObject("Slides(int)", index);
 	if (!slides) {
 		return false;
 	}
 
 	qDebug() << savePath;
-	slides->querySubObject("Export(QString, QString, int, int)", savePath, "jpg", 1920, 1080);
+	slides->querySubObject("Export(QString, QString, int, int)", savePath, "jpg", 1024, 768);
 	if (!slides) {
 		return false;
 	}
@@ -143,7 +169,7 @@ bool PPTPlayer::procExport(int index, QString savePath)
 }
 
 bool PPTPlayer::procNext() {
-	auto view = window->querySubObject("View");
+	auto view = m_window->querySubObject("View");
 	if (!view) {
 		return false;
 	}
@@ -160,7 +186,7 @@ bool PPTPlayer::procNext() {
 }
 
 bool PPTPlayer::procPrev() {
-	auto view = window->querySubObject("View");
+	auto view = m_window->querySubObject("View");
 	if (!view)
 		return false;
 	
@@ -177,7 +203,19 @@ bool PPTPlayer::procPrev() {
 
 bool PPTPlayer::procClose() {
 	qDebug() << "close";
-	opened->dynamicCall("Close()");
+	if (m_opened)
+	{
+		m_opened->dynamicCall("Close()");
+	}
+
+	if (m_application)
+	{
+		m_application->dynamicCall("Quit()");
+	}
+
+	QFile f;
+	f.remove(m_tmpPath);
+	
 	return true;
 }
 
@@ -192,7 +230,7 @@ bool PPTPlayer::procStart(QWidget* widget, QWidget* fitWidget) {
 bool PPTPlayer::procFocus() {
 
 	// MS Office可用，WPS无效
-	window->dynamicCall("Activate()");
+	m_window->dynamicCall("Activate()");
 
 	return true;
 }
@@ -204,17 +242,17 @@ bool PPTPlayer::procGotoSlide(int index) {
 	{
 		return false;
 	}
-	auto view = window->querySubObject("View");
+	auto view = m_window->querySubObject("View");
 	if (!view)
 		return false;
-	view->dynamicCall("GotoSlide(int, bool)", index, false);
+	view->dynamicCall("GotoSlide(int, bool)", index, msoFalse);
 
 	return true;
 }
 
 
 int PPTPlayer::getCurrentSlide() {
-	auto view = window->querySubObject("View");
+	auto view = m_window->querySubObject("View");
 	if (!view)
 		return -1;
 
@@ -228,7 +266,7 @@ int PPTPlayer::getCurrentSlide() {
 
 int PPTPlayer::getTotalSlides() {
 	
-	auto slides = opened->querySubObject("Slides");
+	auto slides = m_opened->querySubObject("Slides");
 
 	if (!slides)
 		return -1;
